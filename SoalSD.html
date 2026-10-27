@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluasi Kelas Online - SDN 1 Rate-Rate</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Roboto', sans-serif; background-color: #f4f4f4; padding: 20px; margin: 0; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header { display: flex; align-items: center; border-bottom: 3px double #333; padding-bottom: 20px; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+        .logo { width: 80px; height: auto; }
+        .header-info { flex: 1; min-width: 200px; }
+        .header-info h2 { margin: 0; font-size: 1.2rem; text-transform: uppercase; }
+        .header-info p { margin: 2px 0; font-size: 0.9rem; }
+
+        .student-info { background: #eef2f3; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #ddd; }
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: inline-block; min-width: 90px; }
+        .form-group input { padding: 6px; width: 60%; border: 1px solid #ccc; border-radius: 4px; }
+
+        .tab-container { display: flex; margin-bottom: 25px; gap: 4px; }
+        .tab-btn {
+            flex: 1; padding: 12px; border: none; background: #e0e0e0;
+            cursor: pointer; font-weight: bold; font-size: 1rem; color: #555;
+            transition: all 0.3s ease; border-radius: 8px 8px 0 0;
+        }
+        .tab-btn:hover:not(.active) { background: #d0d0d0; }
+        .tab-btn.active {
+            background: #25D366; color: white;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+        }
+
+        .tab-content { display: none; padding-top: 10px; }
+        .tab-content.active { display: block; animation: fadeIn 0.5s; }
+
+        .question-box { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+        .question-text { font-weight: bold; margin-bottom: 10px; display: block; line-height: 1.5; }
+        .soal-img { max-width: 100%; height: auto; max-height: 300px; display: block; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; }
+        .options label { display: block; margin-bottom: 6px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background 0.2s; }
+        .options label:hover { background: #f0f8ff; }
+        .options input[type="radio"] { margin-right: 6px; }
+
+        textarea.essay-input {
+            width: 100%; min-height: 80px; padding: 10px; border: 1px solid #ccc;
+            border-radius: 4px; margin-top: 10px; font-family: inherit; resize: vertical;
+        }
+
+        .btn-submit {
+            background-color: #25D366; color: white; border: none; padding: 15px 30px;
+            font-size: 1rem; font-weight: bold; border-radius: 5px; cursor: pointer;
+            width: 100%; margin-top: 20px; transition: background 0.2s;
+        }
+        .btn-submit:hover:not(:disabled) { background-color: #128C7E; }
+        .btn-submit:disabled { background-color: #aaa; cursor: not-allowed; }
+
+        .status-msg { padding: 12px; border-radius: 5px; margin: 15px 0; text-align: center; display: none; }
+        .status-msg.error { background: #ffe6e6; color: #c00; display: block; border: 1px solid #ffb3b3; }
+        .status-msg.info { background: #e6f2ff; color: #0055aa; display: block; border: 1px solid #b3d4ff; }
+        .status-msg.success { background: #e6ffe6; color: #0a7d0a; display: block; border: 1px solid #b3ffb3; }
+
+        .loading { text-align: center; padding: 30px; color: #666; font-style: italic; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            .form-group input { width: 100%; }
+            .form-group label { display: block; margin-bottom: 4px; }
+            .tab-btn { font-size: 0.9rem; padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/9/9c/Logo_of_Ministry_of_Education_and_Culture_of_Republic_of_Indonesia.svg"
+             alt="Logo" class="logo"
+             onerror="this.style.display='none'">
+        <div class="header-info">
+            <h2>SD Negeri 1 Sinjai</h2>
+            <p><strong>Nama Guru:</strong> Edward Haris, S.Pd</p>
+            <p><strong>NIP:</strong> -
+            </p>
+            <p><strong>Tanggal:</strong> <span id="currentDate">-</span></p>
+            <p><strong>Mata Pelajaran:</strong> <span id="dynamicSubject" style="color:#0055aa; font-weight:bold;">Memuat...</span></p>
+        </div>
+    </div>
+
+    <div class="student-info">
+        <div class="form-group">
+            <label for="namaSiswa">Nama Siswa:</label>
+            <input type="text" id="namaSiswa" placeholder="Contoh: Ahmad" required>
+        </div>
+        <div class="form-group">
+            <label for="kelasSiswa">Kelas:</label>
+            <input type="text" id="kelasSiswa" placeholder="Contoh: 5A" required>
+        </div>
+    </div>
+
+    <div id="statusMsg" class="status-msg"></div>
+
+    <div class="tab-container">
+        <button class="tab-btn active" data-tab="pg" type="button">Pilihan Ganda</button>
+        <button class="tab-btn" data-tab="essay" type="button">Essay / Uraian</button>
+    </div>
+
+    <div id="pg-container" class="tab-content active">
+        <div class="loading">Memuat Soal Pilihan Ganda...</div>
+    </div>
+
+    <div id="essay-container" class="tab-content">
+        <div class="loading">Memuat Soal Essay...</div>
+    </div>
+
+    <button class="btn-submit" id="btnSubmit" onclick="submitAnswers()" type="button">
+        Kirim Jawaban ke WhatsApp Guru
+    </button>
+</div>
+
+<script>
+    // ==========================================
+    // KONFIGURASI
+    // ==========================================
+    // Pastikan link ini mengarah ke Google Sheets asli (bukan file xlsx mentah)
+    const rawSheetLink = "https://docs.google.com/spreadsheets/d/1HeFBJjo5cPPFjURbfLnMuhZauldjmXMQ/edit?usp=drivesdk&ouid=107747413233034452102&rtpof=true&sd=true";
+    const teacherPhone = "6285246459090";
+
+    // ==========================================
+    // STATE
+    // ==========================================
+    let questionsData = [];
+    let currentMapel = "Latihan Soal";
+    let pgNumberMap = {};      
+    let essayNumberMap = {};   
+
+    // ==========================================
+    // UTIL
+    // ==========================================
+    const escapeHtml = (str) => {
+        if (str == null) return "";
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    };
+
+    function showStatus(msg, type = "info") {
+        const el = document.getElementById('statusMsg');
+        el.className = "status-msg " + type;
+        el.innerText = msg;
+    }
+
+    function hideStatus() {
+        document.getElementById('statusMsg').className = "status-msg";
+        document.getElementById('statusMsg').innerText = "";
+    }
+
+    function extractSheetId(url) {
+        if (!url) return null;
+        const patterns = [
+            /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/,
+            /\/file\/d\/([a-zA-Z0-9-_]+)/,
+            /[?&]id=([a-zA-Z0-9-_]+)/
+        ];
+        for (const p of patterns) {
+            const m = url.match(p);
+            if (m && m[1]) return m[1];
+        }
+        return null;
+    }
+
+    function convertDriveImage(url) {
+        if (!url || typeof url !== "string") return "";
+        const trimmed = url.trim();
+        if (!/drive\.google\.com|docs\.google\.com/.test(trimmed)) return trimmed;
+        const idMatch = trimmed.match(/\/d\/([a-zA-Z0-9-_]+)/)
+                     || trimmed.match(/[?&]id=([a-zA-Z0-9-_]+)/);
+        return idMatch ? `https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w1000` : trimmed;
+    }
+
+    function normalizeKey(key) {
+        return String(key || "")
+            .trim()
+            .toLowerCase()
+            .replace(/[\s\-]+/g, "_")
+            .replace(/[^a-z0-9_]/g, "");
+    }
+
+    function getField(row, aliases) {
+        for (const k of Object.keys(row)) {
+            const nk = normalizeKey(k);
+            if (aliases.includes(nk)) return row[k];
+        }
+        return undefined;
+    }
+
+    // ==========================================
+    // INISIALISASI
+    // ==========================================
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('currentDate').innerText =
+            new Date().toLocaleDateString('id-ID', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => openTab(btn.dataset.tab));
+        });
+
+        loadData();
+    });
+
+    function openTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+        const content = document.getElementById(tabName + '-container');
+        const btn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+        if (content) content.classList.add('active');
+        if (btn) btn.classList.add('active');
+    }
+
+    // ==========================================
+    // LOAD DATA
+    // ==========================================
+    function loadData() {
+        const sheetId = extractSheetId(rawSheetLink);
+        if (!sheetId) {
+            showStatus("Link Google Sheets tidak valid. Periksa konfigurasi rawSheetLink.", "error");
+            return;
+        }
+
+        const endpoints = [
+            `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`,
+            `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`,
+            `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Sheet1`
+        ];
+
+        tryEndpoints(endpoints, 0, sheetId);
+    }
+
+    function tryEndpoints(endpoints, idx, sheetId) {
+        if (idx >= endpoints.length) {
+            showStatus(
+                "Gagal memuat data. Pastikan file sudah di-share 'Anyone with the link' sebagai Viewer.",
+                "error"
+            );
+            document.getElementById('pg-container').innerHTML = "";
+            document.getElementById('essay-container').innerHTML = "";
+            return;
+        }
+
+        const url = endpoints[idx];
+        Papa.parse(url, {
+            download: true,
+            header: true,
+            skipEmptyLines: 'greedy',
+            complete: function (results) {
+                if (results.errors && results.errors.length && !results.data.length) {
+                    return tryEndpoints(endpoints, idx + 1, sheetId);
+                }
+                if (!results.data || results.data.length === 0) {
+                    return tryEndpoints(endpoints, idx + 1, sheetId);
+                }
+
+                const hasValidRows = results.data.some(r =>
+                    r && Object.values(r).some(v => v && String(v).trim() !== "")
+                );
+                if (!hasValidRows) return tryEndpoints(endpoints, idx + 1, sheetId);
+
+                questionsData = results.data;
+                hideStatus();
+
+                const firstMapel = getField(questionsData[0], ["judul_mapel", "mapel", "mata_pelajaran"]);
+                if (firstMapel && String(firstMapel).trim()) currentMapel = String(firstMapel).trim();
+                document.getElementById('dynamicSubject').innerText = currentMapel;
+
+                renderQuiz(questionsData);
+            },
+            error: function () {
+                tryEndpoints(endpoints, idx + 1, sheetId);
+            }
+        });
+    }
+
+    // ==========================================
+    // RENDER
+    // ==========================================
+    function renderQuiz(data) {
+        const pgContainer = document.getElementById('pg-container');
+        const essayContainer = document.getElementById('essay-container');
+        pgContainer.innerHTML = "";
+        essayContainer.innerHTML = "";
+        pgNumberMap = {};
+        essayNumberMap = {};
+
+        let pgCount = 0;
+        let essayCount = 0;
+
+        data.forEach((item, index) => {
+            if (!item) return;
+
+            const pertanyaan = getField(item, ["pertanyaan", "soal", "question"]);
+            // Baris kosong langsung dilewati tanpa peringatan
+            if (!pertanyaan || String(pertanyaan).trim() === "") { 
+                return; 
+            }
+
+            const tipeRaw = getField(item, ["tipe", "tipe_soal", "type"]) || "PG";
+            const tipeSoal = String(tipeRaw).trim().toUpperCase();
+
+            const linkGambar = getField(item, ["link_gambar", "gambar", "image", "link_image"]);
+            let imgHTML = "";
+            if (linkGambar && String(linkGambar).trim() !== "") {
+                const fixUrl = convertDriveImage(linkGambar);
+                imgHTML = `<img src="${escapeHtml(fixUrl)}" class="soal-img" alt="Gambar Soal" loading="lazy" onerror="this.style.display='none'">`;
+            }
+
+            const soalHTML = escapeHtml(pertanyaan).replace(/\n/g, "<br>");
+
+            if (tipeSoal === "ESSAY" || tipeSoal === "URAIAN") {
+                essayCount++;
+                essayNumberMap[index] = essayCount;
+                const qHTML = `
+                    <div class="question-box">
+                        <span class="question-text">Soal ${essayCount}. ${soalHTML}</span>
+                        ${imgHTML}
+                        <textarea id="essay_ans_${index}" class="essay-input" placeholder="Tulis jawaban Anda di sini..."></textarea>
+                    </div>`;
+                essayContainer.insertAdjacentHTML('beforeend', qHTML);
+            } else {
+                const opsiA = getField(item, ["opsi_a", "a", "pilihan_a"]) || "";
+                const opsiB = getField(item, ["opsi_b", "b", "pilihan_b"]) || "";
+                const opsiC = getField(item, ["opsi_c", "c", "pilihan_c"]) || "";
+                const opsiD = getField(item, ["opsi_d", "d", "pilihan_d"]) || "";
+
+                pgCount++;
+                pgNumberMap[index] = pgCount;
+
+                const qHTML = `
+                    <div class="question-box">
+                        <span class="question-text">${pgCount}. ${soalHTML}</span>
+                        ${imgHTML}
+                        <div class="options">
+                            <label><input type="radio" name="q${index}" value="A"> A. ${escapeHtml(opsiA)}</label>
+                            <label><input type="radio" name="q${index}" value="B"> B. ${escapeHtml(opsiB)}</label>
+                            <label><input type="radio" name="q${index}" value="C"> C. ${escapeHtml(opsiC)}</label>
+                            <label><input type="radio" name="q${index}" value="D"> D. ${escapeHtml(opsiD)}</label>
+                        </div>
+                    </div>`;
+                pgContainer.insertAdjacentHTML('beforeend', qHTML);
+            }
+        });
+
+        if (pgCount === 0) pgContainer.innerHTML = "<p style='text-align:center;color:#888'>Tidak ada soal Pilihan Ganda.</p>";
+        if (essayCount === 0) essayContainer.innerHTML = "<p style='text-align:center;color:#888'>Tidak ada soal Essay.</p>";
+    }
+
+    // ==========================================
+    // SUBMIT
+    // ==========================================
+    function submitAnswers() {
+        const nama = document.getElementById('namaSiswa').value.trim();
+        const kelas = document.getElementById('kelasSiswa').value.trim();
+
+        if (!nama || !kelas) {
+            showStatus("⚠️ Isi Nama dan Kelas terlebih dahulu sebelum mengirim.", "error");
+            return;
+        }
+        hideStatus();
+
+        let pgScore = 0;
+        let pgTotal = 0;
+        let essayAnswers = "";
+        let answeredEssays = 0;
+
+        questionsData.forEach((item, index) => {
+            if (!item) return;
+            const pertanyaan = getField(item, ["pertanyaan", "soal", "question"]);
+            if (!pertanyaan || String(pertanyaan).trim() === "") return;
+
+            const tipeRaw = getField(item, ["tipe", "tipe_soal", "type"]) || "PG";
+            const tipeSoal = String(tipeRaw).trim().toUpperCase();
+
+            if (tipeSoal === "ESSAY" || tipeSoal === "URAIAN") {
+                const textarea = document.getElementById(`essay_ans_${index}`);
+                const ans = textarea ? textarea.value.trim() : "";
+                const no = essayNumberMap[index] || (answeredEssays + 1);
+                essayAnswers += `\n${no}. ${ans ? ans : '(kosong)'}`;
+                if (ans) answeredEssays++;
+            } else {
+                const kunciRaw = getField(item, ["jawaban_benar", "kunci", "jawaban", "kunci_jawaban"]);
+                const kunci = kunciRaw ? String(kunciRaw).trim().toUpperCase() : "";
+                if (!kunci) return;
+
+                pgTotal++;
+                const radios = document.getElementsByName(`q${index}`);
+                let val = null;
+                for (const r of radios) if (r.checked) { val = r.value; break; }
+                if (val === kunci) pgScore++;
+            }
+        });
+
+        if (pgTotal === 0 && essayAnswers === "") {
+            showStatus("⚠️ Tidak ada soal yang bisa dinilai. Periksa data sheet.", "error");
+            return;
+        }
+
+        const finalScore = pgTotal > 0 ? (pgScore / pgTotal) * 100 : 0;
+
+        let msg = `*Laporan Evaluasi Online*`;
+        msg += `\nMapel: ${currentMapel}`;
+        msg += `\nNama: ${nama}`;
+        msg += `\nKelas: ${kelas}`;
+        msg += `\n------------------`;
+        if (pgTotal > 0) {
+            msg += `\n*NILAI PG: ${finalScore.toFixed(0)}* (Benar ${pgScore}/${pgTotal})`;
+        } else {
+            msg += `\n(Tidak ada soal PG)`;
+        }
+
+        if (essayAnswers !== "") {
+            msg += `\n\n*Jawaban Essay:*${essayAnswers}`;
+        }
+
+        showStatus("✅ Mengarahkan ke WhatsApp...", "success");
+
+        const waUrl = `https://wa.me/${teacherPhone}?text=${encodeURIComponent(msg)}`;
+        window.open(waUrl, '_blank');
+    }
+</script>
+</body>
+</html>
